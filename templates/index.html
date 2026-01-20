@@ -3,138 +3,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ZImage Mobile V3.1</title>
+    <title>ZImage HardFix</title>
     <style>
         :root {
             --bg: #000000;
             --surface: #111111;
-            --surface-light: #222222;
             --primary: #8b5cf6;
             --text-main: #ffffff;
-            --text-muted: #888888;
             --radius: 16px;
         }
 
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body {
-            margin: 0; background-color: var(--bg); color: var(--text-main);
-            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-            display: flex; flex-direction: column; height: 100vh; overflow: hidden;
-        }
+        body { margin: 0; background: var(--bg); color: var(--text-main); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
 
-        /* HEADER */
-        header {
-            height: 60px; display: flex; align-items: center; justify-content: space-between;
-            padding: 0 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
-            border-bottom: 1px solid #222; z-index: 50;
-        }
-        .brand { font-weight: 900; font-size: 20px; }
-        .brand span { color: var(--primary); }
+        header { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(0,0,0,0.8); border-bottom: 1px solid #333; }
+        .brand { font-weight: 900; font-size: 20px; } .brand span { color: var(--primary); }
         .settings-btn { font-size: 24px; background: none; border: none; cursor: pointer; }
 
-        /* MAIN CONTENT */
         main { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 100px; }
 
-        /* PREVIEW AREA */
-        .preview-box {
-            width: 100%; min-height: 350px; background: var(--surface);
-            border-radius: var(--radius); border: 1px solid #333;
-            display: flex; align-items: center; justify-content: center;
-            overflow: hidden; margin-bottom: 20px; position: relative;
-        }
+        .preview-box { width: 100%; min-height: 350px; background: var(--surface); border-radius: var(--radius); border: 1px solid #333; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; position: relative; }
         .preview-box img { width: 100%; height: auto; display: none; object-fit: contain; }
-        .loader {
-            width: 40px; height: 40px; border: 4px solid #333; border-top-color: var(--primary);
-            border-radius: 50%; animation: spin 1s infinite linear; display: none;
-        }
+        .loader { width: 40px; height: 40px; border: 4px solid #333; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear; display: none; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* INPUTS */
         .input-group { position: relative; margin-bottom: 15px; }
-        textarea {
-            width: 100%; background: var(--surface); border: 1px solid #333;
-            color: white; padding: 15px; padding-bottom: 40px; border-radius: var(--radius);
-            font-size: 16px; resize: none; outline: none;
-        }
-        textarea:focus { border-color: var(--primary); }
-        
-        .enhance-btn {
-            position: absolute; bottom: 8px; right: 8px;
-            background: #2a1b42; color: #d8b4fe; border: none;
-            border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: bold;
-        }
-
-        .action-btn {
-            width: 100%; background: var(--primary); color: white; border: none;
-            padding: 16px; border-radius: var(--radius); font-size: 16px; font-weight: bold;
-            margin-bottom: 25px;
-        }
+        textarea { width: 100%; background: var(--surface); border: 1px solid #333; color: white; padding: 15px; padding-bottom: 40px; border-radius: var(--radius); font-size: 16px; resize: none; outline: none; }
+        .enhance-btn { position: absolute; bottom: 8px; right: 8px; background: #2a1b42; color: #d8b4fe; border: none; border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: bold; }
+        .action-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: var(--radius); font-size: 16px; font-weight: bold; margin-bottom: 25px; }
         .action-btn:disabled { opacity: 0.5; }
 
-        /* HISTORY */
-        .history-label { font-size: 12px; color: var(--text-muted); font-weight: bold; margin-bottom: 10px; }
+        .history-label { font-size: 12px; color: #888; font-weight: bold; margin-bottom: 10px; }
         .history-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
-        .history-item {
-            min-width: 80px; width: 80px; height: 80px; background: #222;
-            border-radius: 12px; overflow: hidden; border: 1px solid #333; flex-shrink: 0;
-            position: relative;
-        }
-        .history-item.active { border-color: var(--primary); border-width: 2px; }
+        .history-item { min-width: 80px; width: 80px; height: 80px; background: #222; border-radius: 12px; overflow: hidden; border: 1px solid #333; flex-shrink: 0; }
+        .history-item.active { border: 2px solid var(--primary); }
         .history-item img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* MODAL */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 100;
-            opacity: 0; pointer-events: none; transition: 0.3s;
-            display: flex; align-items: flex-end;
-        }
+        /* Modal */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s; display: flex; align-items: flex-end; }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
-        .modal-content {
-            width: 100%; background: #1a1a1a; border-top-left-radius: 24px; border-top-right-radius: 24px;
-            padding: 25px; transform: translateY(100%); transition: transform 0.3s ease-out;
-            border-top: 1px solid #333; box-shadow: 0 -5px 30px rgba(0,0,0,0.5);
-        }
+        .modal-content { width: 100%; background: #1a1a1a; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 25px; transform: translateY(100%); transition: transform 0.3s ease-out; border-top: 1px solid #333; }
         .modal-overlay.open .modal-content { transform: translateY(0); }
-
         .setting-row { margin-bottom: 20px; }
-        .setting-label { display: block; color: var(--text-muted); font-size: 12px; margin-bottom: 8px; font-weight: bold; }
-        select, input {
-            width: 100%; background: #2a2a2a; border: none; color: white;
-            padding: 14px; border-radius: 12px; font-size: 16px; -webkit-appearance: none;
-        }
-        .close-modal {
-            width: 100%; background: #333; padding: 15px; border: none;
-            color: white; border-radius: 12px; font-weight: bold; margin-top: 10px;
-        }
+        .setting-label { display: block; color: #888; font-size: 12px; margin-bottom: 8px; font-weight: bold; }
+        select, input { width: 100%; background: #2a2a2a; border: none; color: white; padding: 14px; border-radius: 12px; font-size: 16px; -webkit-appearance: none; }
+        .close-modal { width: 100%; background: #333; padding: 15px; border: none; color: white; border-radius: 12px; font-weight: bold; margin-top: 10px; }
     </style>
 </head>
 <body>
-
     <header>
-        <div class="brand">ZImage <span>V3</span></div>
+        <div class="brand">ZImage <span>V3.3</span></div>
         <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
     </header>
 
     <main>
         <div class="preview-box">
-            <div id="statusText" style="color: #666;">Create something...</div>
             <div id="loader" class="loader"></div>
             <img id="resultImg" />
         </div>
-
         <div class="input-group">
             <textarea id="prompt" rows="3" placeholder="Describe your image..."></textarea>
             <button class="enhance-btn" onclick="enhancePrompt()">✨ Enhance</button>
         </div>
-
         <button class="action-btn" id="genBtn" onclick="generateImage()">GENERATE</button>
-
         <div class="history-label">RECENT HISTORY</div>
         <div class="history-strip" id="historyContainer"></div>
     </main>
 
-    <!-- SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal" onclick="toggleSettings()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 style="margin-top:0;">Settings</h3>
@@ -143,184 +78,165 @@
                 <select id="ratio">
                     <option value="1:1">Square (1:1)</option>
                     <option value="16:9">Cinematic (16:9)</option>
-                    <option value="9:16">Story/Mobile (9:16)</option>
+                    <option value="9:16">Story (9:16)</option>
                     <option value="4:3">Portrait (4:3)</option>
-                    <option value="3:2">Landscape Photo (3:2)</option>
+                    <option value="3:2">Landscape (3:2)</option>
                 </select>
             </div>
             <div class="setting-row">
                 <label class="setting-label">Quality</label>
                 <select id="quality">
-                    <option value="HD">HD (Fast)</option>
-                    <option value="4K">4K (Detailed)</option>
-                    <option value="8K">8K (Slow)</option>
+                    <option value="HD">HD</option>
+                    <option value="4K">4K</option>
+                    <option value="8K">8K</option>
                 </select>
             </div>
-            <div class="setting-row">
-                <label class="setting-label">Negative Prompt</label>
-                <input type="text" id="negative" value="ugly, blurry, low quality">
-            </div>
+            <div class="setting-row"><label class="setting-label">Negative</label><input type="text" id="negative" value="ugly, blurry"></div>
             <button class="close-modal" onclick="clearHistory()">Clear History</button>
-            <button class="close-modal" style="background:var(--primary); margin-top:5px;" onclick="toggleSettings()">Done</button>
+            <button class="close-modal" style="background:var(--primary);" onclick="toggleSettings()">Done</button>
         </div>
     </div>
 
     <script>
-        // Store history in memory variable
-        let historyData = JSON.parse(localStorage.getItem('zHistoryV3_UUID') || '[]');
+        // --- DATA LAYER ---
+        let historyData = JSON.parse(localStorage.getItem('zHistoryV3_HardFix') || '[]');
         let currentViewingId = null;
 
-        // Init
+        // Startup
         renderHistory();
 
-        function toggleSettings() {
-            document.getElementById('settingsModal').classList.toggle('open');
-        }
-
-        async function enhancePrompt() {
-            const txt = document.getElementById('prompt');
-            const original = txt.value;
-            if(!original) return;
-            
-            txt.value = "Enhancing...";
-            try {
-                const res = await fetch('/enhance', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({prompt: original})
-                });
-                const data = await res.json();
-                txt.value = data.enhanced || original;
-            } catch(e) { txt.value = original; }
-        }
+        // --- CORE FUNCTIONS ---
 
         async function generateImage() {
-            const prompt = document.getElementById('prompt').value;
-            if(!prompt) return alert("Please enter a prompt");
+            const promptVal = document.getElementById('prompt').value;
+            if(!promptVal) return alert("Enter prompt");
 
-            // UI Loading
-            const btn = document.getElementById('genBtn');
-            const img = document.getElementById('resultImg');
-            const loader = document.getElementById('loader');
-            const status = document.getElementById('statusText');
-
-            btn.disabled = true;
-            btn.innerText = "GENERATING...";
-            img.style.display = 'none';
-            status.style.display = 'none';
-            loader.style.display = 'block';
+            // UI State: Loading
+            toggleLoading(true);
 
             try {
+                // 1. CALL API
                 const res = await fetch('/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({
-                        prompt: prompt,
+                        prompt: promptVal,
                         negative: document.getElementById('negative').value,
                         ratio: document.getElementById('ratio').value,
                         quality: document.getElementById('quality').value,
                         seed: -1 
                     })
                 });
-
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
 
-                // Load New Image
-                img.src = data.image_url;
-                img.onload = () => {
-                    loader.style.display = 'none';
-                    img.style.display = 'block';
-                    btn.disabled = false;
-                    btn.innerText = "GENERATE";
-                    
-                    // --- UNIQUE ID LOGIC ---
-                    // The backend provides a UUID ("id").
-                    // We set this as the current view.
-                    currentViewingId = data.id;
+                // 2. HARD FIX: Save to History HERE.
+                // This only runs when the API call succeeds.
+                // It NEVER runs when clicking a history thumb.
+                addToHistory({
+                    id: data.id,
+                    url: data.image_url,
+                    prompt: promptVal
+                });
 
-                    // We add it to history.
-                    addToHistory({
-                        id: data.id,        // Store UUID
-                        url: data.image_url,
-                        prompt: prompt
-                    });
-                };
+                // 3. Update View
+                currentViewingId = data.id;
+                renderHistory(); // Update active border
+                displayImage(data.image_url);
 
             } catch(e) {
-                loader.style.display = 'none';
-                status.style.display = 'block';
-                status.innerText = "Error: " + e.message;
-                btn.disabled = false;
+                alert(e.message);
+                toggleLoading(false);
             }
         }
 
-        // === HISTORY SYSTEM WITH UUID PROTECTION ===
+        function loadFromCache(uuid) {
+            // 1. Find Data
+            const item = historyData.find(i => i.id === uuid);
+            if(!item) return;
 
-        function addToHistory(newItem) {
-            // CRITICAL: Check if this UUID already exists in history.
-            // If it exists, we do NOTHING. This prevents duplicates.
-            const exists = historyData.some(item => item.id === newItem.id);
-            if(exists) return;
+            // 2. Set UI State
+            currentViewingId = uuid;
+            document.getElementById('prompt').value = item.prompt;
+            renderHistory(); // Update active border
 
-            // Add to start
-            historyData.unshift(newItem);
+            // 3. Show Image
+            toggleLoading(true);
+            displayImage(item.url);
             
-            // Limit to 20
+            // NOTE: addToHistory is NOT called here. Duplicate impossible.
+        }
+
+        function displayImage(url) {
+            const img = document.getElementById('resultImg');
+            
+            // Reset onload to purely visual logic
+            img.onload = () => {
+                toggleLoading(false);
+            };
+            
+            img.src = url;
+        }
+
+        // --- HELPER FUNCTIONS ---
+
+        function addToHistory(item) {
+            // Redundant check just in case, but logic above prevents it anyway
+            if(historyData.some(i => i.id === item.id)) return;
+
+            historyData.unshift(item);
             if(historyData.length > 20) historyData.pop();
-            
-            // Save & Render
-            localStorage.setItem('zHistoryV3_UUID', JSON.stringify(historyData));
-            renderHistory();
+            localStorage.setItem('zHistoryV3_HardFix', JSON.stringify(historyData));
         }
 
         function renderHistory() {
             const container = document.getElementById('historyContainer');
-            container.innerHTML = ''; 
-
-            historyData.forEach((item) => {
+            container.innerHTML = '';
+            historyData.forEach(item => {
                 const div = document.createElement('div');
-                div.className = 'history-item';
-                if(item.id === currentViewingId) div.classList.add('active');
-                
-                div.innerHTML = `<img src="${item.url}" loading="lazy">`;
-                
-                // When clicked, we strictly call Load by ID
+                div.className = 'history-item ' + (item.id === currentViewingId ? 'active' : '');
+                div.innerHTML = `<img src="${item.url}">`;
                 div.onclick = () => loadFromCache(item.id);
-                
                 container.appendChild(div);
             });
         }
 
-        function loadFromCache(uuid) {
-            // Find the specific object by UUID
-            const item = historyData.find(i => i.id === uuid);
-            if(!item) return;
-
-            // Set State
-            currentViewingId = uuid;
-
-            // Update UI (Load from Cache)
-            document.getElementById('prompt').value = item.prompt;
+        function toggleLoading(isLoading) {
+            const btn = document.getElementById('genBtn');
+            const loader = document.getElementById('loader');
             const img = document.getElementById('resultImg');
-            img.src = item.url;
-            img.style.display = 'block';
-            document.getElementById('statusText').style.display = 'none';
-
-            // Highlight active thumb
-            renderHistory(); 
-
-            // IMPORTANT: Notice we do NOT call generateImage() or addToHistory() here.
-            // This ensures no duplication happens.
+            
+            if(isLoading) {
+                btn.disabled = true;
+                btn.innerText = "GENERATING...";
+                loader.style.display = 'block';
+                img.style.display = 'none';
+            } else {
+                btn.disabled = false;
+                btn.innerText = "GENERATE";
+                loader.style.display = 'none';
+                img.style.display = 'block';
+            }
         }
 
-        function clearHistory() {
-            if(confirm("Clear all history?")) {
-                historyData = [];
-                localStorage.removeItem('zHistoryV3_UUID');
-                renderHistory();
-                toggleSettings();
-            }
+        async function enhancePrompt() {
+            const txt = document.getElementById('prompt');
+            const orig = txt.value;
+            if(!orig) return;
+            txt.value = "Enhancing...";
+            try {
+                const r = await fetch('/enhance', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({prompt:orig})});
+                const d = await r.json();
+                txt.value = d.enhanced || orig;
+            } catch { txt.value = orig; }
+        }
+
+        function toggleSettings() { document.getElementById('settingsModal').classList.toggle('open'); }
+        function clearHistory() { 
+            if(confirm("Clear?")) { 
+                historyData=[]; localStorage.removeItem('zHistoryV3_HardFix'); 
+                renderHistory(); toggleSettings(); 
+            } 
         }
     </script>
 </body>
