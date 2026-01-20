@@ -1,174 +1,416 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>ZImage Manager Edition</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>ZImage</title>
     <style>
-        :root { --bg: #0f0f0f; --panel: #1a1a1a; --accent: #7209b7; --mode4k: #f72585; --mode8k: #00d2d3; --mode16k: #ffd32a; }
-        body { background: var(--bg); color: #eee; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; margin: 0; height: 100vh; overflow: hidden; }
-        
-        .sidebar { width: 320px; background: var(--panel); padding: 20px; border-right: 1px solid #333; overflow-y: auto; display: flex; flex-direction: column; }
-        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; background: #050505; }
-        
-        h1 { font-family: Impact, sans-serif; color: var(--accent); margin: 0; font-size: 28px; letter-spacing: 1px; }
-        .label { font-size: 10px; color: #888; font-weight: bold; margin-top: 15px; display: block; text-transform: uppercase; }
-        
-        textarea, input, select { width: 100%; background: #262626; border: 1px solid #333; color: white; padding: 10px; border-radius: 5px; margin-top: 5px; box-sizing: border-box; font-size: 13px; }
-        textarea:focus { outline: 1px solid var(--accent); }
-        
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.2s; }
-        .btn-gen { background: var(--accent); color: white; font-size: 15px; }
-        .btn-gen:hover { background: #560bad; }
-        .btn-gen:disabled { background: #444; cursor: not-allowed; }
-        .btn-gemini { background: #4fabff; color: black; }
+        :root {
+            --bg: #000000;
+            --surface: #121212;
+            --surface-2: #1e1e1e;
+            --primary: #8b5cf6; /* Vivid Violet */
+            --primary-dark: #7c3aed;
+            --text: #ffffff;
+            --text-secondary: #a1a1aa;
+            --border: #27272a;
+            --danger: #ef4444;
+            --safe-area-top: env(safe-area-inset-top);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+        }
 
-        #image-container { flex: 1; margin-top: 15px; border: 1px solid #222; display: flex; align-items: center; justify-content: center; background: #000; position: relative; border-radius: 8px; overflow: hidden; }
-        #preview { max-width: 100%; max-height: 100%; object-fit: contain; display: none; }
+        /* RESET & BASE */
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { margin: 0; background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+
+        /* HEADER */
+        header {
+            padding: calc(var(--safe-area-top) + 15px) 20px 15px;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo { font-weight: 900; font-size: 22px; letter-spacing: -1px; background: linear-gradient(to right, #fff, #a1a1aa); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .badge { background: var(--primary); color: white; font-size: 10px; font-weight: bold; padding: 2px 6px; border-radius: 4px; vertical-align: middle; margin-left: 5px; }
+
+        /* MAIN LAYOUT */
+        main { flex: 1; padding: 20px; padding-bottom: calc(var(--safe-area-bottom) + 80px); max-width: 600px; margin: 0 auto; width: 100%; }
+
+        /* IMAGE VIEWER */
+        .viewer {
+            width: 100%;
+            background: var(--surface);
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+            position: relative;
+            min-height: 350px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+        }
+        .viewer img { width: 100%; height: auto; display: none; object-fit: contain; }
         
-        .status-box { text-align: center; }
-        .loader { color: var(--accent); font-weight: bold; font-size: 14px; margin-bottom: 10px; }
-        .error-text { color: #ff4757; font-size: 13px; margin-top: 10px; display: none; }
+        /* Placeholder & Loader */
+        .placeholder { text-align: center; color: var(--text-secondary); padding: 20px; }
+        .placeholder p { font-size: 14px; margin-top: 10px; opacity: 0.7; }
+        .loader-ring { display: none; width: 40px; height: 40px; border: 3px solid var(--surface-2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* CONTROLS */
+        .control-group { margin-bottom: 20px; position: relative; }
         
-        .mode-4k { color: var(--mode4k) !important; font-weight: bold; }
-        .mode-8k { color: var(--mode8k) !important; font-weight: bold; }
-        .mode-16k { color: var(--mode16k) !important; font-weight: bold; }
+        textarea {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 18px;
+            padding-bottom: 45px; /* Space for Enhance button */
+            border-radius: 16px;
+            font-size: 16px; /* Prevents iOS zoom */
+            resize: none;
+            outline: none;
+            transition: border 0.2s;
+            line-height: 1.4;
+        }
+        textarea:focus { border-color: var(--primary); }
+        textarea::placeholder { color: #555; }
+
+        .btn-enhance {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            background: rgba(139, 92, 246, 0.15);
+            color: #c4b5fd;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            backdrop-filter: blur(5px);
+        }
+
+        /* SETTINGS ACCORDION */
+        .settings-btn {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 14px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        .settings-content {
+            display: none;
+            background: var(--surface-2);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 20px;
+            animation: slideDown 0.2s ease;
+        }
+        .settings-content.open { display: block; }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* FORM ELEMENTS */
+        .form-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .form-col { flex: 1; }
+        label { display: block; font-size: 11px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; font-weight: 700; letter-spacing: 0.5px; }
+        select, input {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            -webkit-appearance: none;
+        }
+        
+        /* GENERATE BUTTON */
+        .btn-main {
+            width: 100%;
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 18px;
+            border-radius: 16px;
+            font-size: 17px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 25px rgba(139, 92, 246, 0.4);
+            transition: transform 0.1s;
+        }
+        .btn-main:active { transform: scale(0.97); }
+        .btn-main:disabled { opacity: 0.6; background: var(--surface-2); box-shadow: none; cursor: wait; }
+
+        /* HISTORY */
+        .history-header { margin-top: 40px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; }
+        .history-label { font-size: 16px; font-weight: 800; }
+        .history-clear { font-size: 12px; color: var(--danger); opacity: 0.8; }
+
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+        }
+        .history-card {
+            background: var(--surface);
+            border-radius: 12px;
+            overflow: hidden;
+            aspect-ratio: 1;
+            position: relative;
+            border: 1px solid var(--border);
+        }
+        .history-card img { width: 100%; height: 100%; object-fit: cover; }
+        .history-card:active { opacity: 0.7; }
+
+        /* TOAST NOTIFICATION */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 50px;
+            padding: 12px;
+            position: fixed;
+            z-index: 100;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.5);
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+        }
+        #toast.show { visibility: visible; opacity: 1; bottom: 40px; }
+
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h1>ZIMAGE</h1>
-        <div style="font-size: 9px; color: #666; margin-bottom: 10px;">MANAGER EDITION v2</div>
-        
-        <span class="label">Resolution Mode</span>
-        <select id="quality">
-            <option value="Standard">Standard</option>
-            <option value="HD">Crystal (HD)</option>
-            <option value="4K" class="mode-4k">⚡ 4K ULTRA</option>
-            <option value="8K" class="mode-8k">🧪 8K EXPERIMENTAL</option>
-            <option value="16K" class="mode-16k">☢ 16K EXPERIMENTAL</option>
-        </select>
 
-        <span class="label">Aspect Ratio</span>
-        <select id="ratio">
-            <option value="1:1">1:1 Square</option>
-            <option value="16:9">16:9 Cinematic</option>
-            <option value="9:16">9:16 Portrait</option>
-            <option value="4:3">4:3 TV</option>
-            <option value="2:3">2:3 Classic</option>
-        </select>
+    <header>
+        <div class="logo">ZImage<span class="badge">PRO</span></div>
+    </header>
 
-        <span class="label">Seed (-1 = Random)</span>
-        <input type="text" id="seed" value="-1">
-
-        <button class="btn btn-gemini" id="geminiBtn" onclick="enhance()">✨ AI Enhance (Gemini)</button>
-        
-        <span class="label">Negative Prompt</span>
-        <textarea id="negative" rows="3">ugly, blurry, low quality, watermark, text, deformed</textarea>
-    </div>
-
-    <div class="main">
-        <textarea id="prompt" rows="4" placeholder="Describe the image you want to create..."></textarea>
-        <button class="btn btn-gen" id="genBtn" onclick="generate()">✨ GENERATE IMAGE</button>
-        
-        <div id="image-container">
-            <div class="status-box">
-                <div id="status" class="loader">READY</div>
-                <div id="errorBox" class="error-text">Generation failed. Please try again.</div>
+    <main>
+        <!-- Viewer -->
+        <div class="viewer" id="viewer">
+            <div id="placeholder" class="placeholder">
+                <div style="font-size: 30px; margin-bottom: 10px;">🎨</div>
+                <div>AI Canvas Ready</div>
+                <p>Long press result to save</p>
             </div>
-            <img id="preview" src="">
+            <div id="loader" class="loader-ring"></div>
+            <img id="resultImg" alt="Result">
         </div>
-        <div id="info" style="font-size: 11px; color: #555; margin-top: 8px; text-align: center;"></div>
-    </div>
+
+        <!-- Inputs -->
+        <div class="control-group">
+            <textarea id="prompt" rows="3" placeholder="Describe your imagination..."></textarea>
+            <button class="btn-enhance" onclick="enhancePrompt()">✨ AI Enhance</button>
+        </div>
+
+        <!-- Settings Drawer -->
+        <div class="settings-btn" onclick="toggleSettings()">
+            <span>🛠 Tune Adjustments</span>
+            <span style="font-size: 10px;">▼</span>
+        </div>
+        <div class="settings-content" id="settings">
+            <div class="form-row">
+                <div class="form-col">
+                    <label>Resolution</label>
+                    <select id="quality">
+                        <option value="HD">HD (Fast)</option>
+                        <option value="4K">4K (Ultra)</option>
+                        <option value="8K">8K (Slow)</option>
+                    </select>
+                </div>
+                <div class="form-col">
+                    <label>Format</label>
+                    <select id="ratio">
+                        <option value="1:1">Square</option>
+                        <option value="9:16">Story</option>
+                        <option value="16:9">Cinema</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-col">
+                    <label>Style Seed</label>
+                    <input type="number" id="seed" placeholder="Random (-1)">
+                </div>
+            </div>
+            <label>Negative Filter</label>
+            <input type="text" id="negative" value="ugly, blurry, low quality, text, watermark">
+        </div>
+
+        <button class="btn-main" id="genBtn" onclick="startGen()">GENERATE</button>
+
+        <!-- History -->
+        <div class="history-header">
+            <span class="history-label">Library</span>
+            <span class="history-clear" onclick="clearHistory()">Clear All</span>
+        </div>
+        <div class="history-grid" id="historyGrid">
+            <!-- JS Injects Here -->
+        </div>
+    </main>
+
+    <!-- Notification Toast -->
+    <div id="toast">Notification</div>
 
     <script>
-        async function enhance() {
-            const promptInput = document.getElementById('prompt');
-            const btn = document.getElementById('geminiBtn');
-            if(!promptInput.value) return alert("Enter a basic prompt first!");
-            
-            btn.disabled = true;
-            btn.innerText = "Thinking...";
+        // --- STATE MANAGEMENT ---
+        let history = JSON.parse(localStorage.getItem('zHistory') || '[]');
 
-            try {
-                const res = await fetch('/enhance', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ prompt: promptInput.value })
-                });
-                const data = await res.json();
-                if(data.enhanced) promptInput.value = data.enhanced;
-            } catch(e) { console.error(e); }
-            
-            btn.disabled = false;
-            btn.innerText = "✨ AI Enhance (Gemini)";
+        // --- UI FUNCTIONS ---
+        function toggleSettings() {
+            document.getElementById('settings').classList.toggle('open');
         }
 
-        async function generate() {
-            const btn = document.getElementById('genBtn');
-            const status = document.getElementById('status');
-            const preview = document.getElementById('preview');
-            const info = document.getElementById('info');
-            const errorBox = document.getElementById('errorBox');
+        function showToast(msg) {
+            const t = document.getElementById("toast");
+            t.innerText = msg;
+            t.className = "show";
+            setTimeout(() => { t.className = t.className.replace("show", ""); }, 3000);
+        }
 
-            const quality = document.getElementById('quality').value;
-            const prompt = document.getElementById('prompt').value;
+        function updateHistoryUI() {
+            const grid = document.getElementById('historyGrid');
+            grid.innerHTML = '';
+            history.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = 'history-card';
+                card.onclick = () => loadFromHistory(idx);
+                card.innerHTML = `<img src="${item.url}" loading="lazy">`;
+                grid.appendChild(card);
+            });
+        }
+
+        // --- API ACTIONS ---
+        async function enhancePrompt() {
+            const input = document.getElementById('prompt');
+            const original = input.value;
+            if(!original) return showToast("Enter a prompt first!");
             
-            if(!prompt) return alert("Please enter a prompt!");
+            input.value = "Optimizing with Gemini...";
+            try {
+                const res = await fetch('/enhance', {
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({prompt: original})
+                });
+                const data = await res.json();
+                input.value = data.enhanced || original;
+                showToast("Prompt Enhanced!");
+            } catch(e) {
+                input.value = original;
+                showToast("Enhance failed");
+            }
+        }
 
-            // UI Reset
+        async function startGen() {
+            const prompt = document.getElementById('prompt').value;
+            if(!prompt) return showToast("Please enter a prompt");
+
+            // UI Loading
+            const btn = document.getElementById('genBtn');
+            const img = document.getElementById('resultImg');
+            const ph = document.getElementById('placeholder');
+            const loader = document.getElementById('loader');
+
             btn.disabled = true;
-            errorBox.style.display = 'none';
-            preview.style.display = 'none';
-            status.style.display = 'block';
-            status.innerText = "STARTING ZIMAGE ENGINE...";
-            info.innerText = "";
+            btn.innerText = "CREATING...";
+            img.style.display = 'none';
+            ph.style.display = 'none';
+            loader.style.display = 'block';
 
             try {
-                // 1. Request URL from Backend
+                const payload = {
+                    prompt: prompt,
+                    negative: document.getElementById('negative').value,
+                    ratio: document.getElementById('ratio').value,
+                    quality: document.getElementById('quality').value,
+                    seed: document.getElementById('seed').value || "-1"
+                };
+
                 const res = await fetch('/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        prompt: prompt,
-                        negative: document.getElementById('negative').value,
-                        ratio: document.getElementById('ratio').value,
-                        quality: quality,
-                        seed: document.getElementById('seed').value
-                    })
+                    body: JSON.stringify(payload)
                 });
                 
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
 
-                // 2. Display waiting message based on quality
-                status.innerText = `DRAWING ${quality} IMAGE...\n(This usually takes 10-40 seconds)`;
+                // Load Image
+                img.src = data.image_url;
+                img.onload = () => {
+                    loader.style.display = 'none';
+                    img.style.display = 'block';
+                    btn.disabled = false;
+                    btn.innerText = "GENERATE";
+                    
+                    // Save to History
+                    history.unshift({ url: data.image_url, prompt: prompt });
+                    if(history.length > 50) history.pop(); // Keep last 50
+                    localStorage.setItem('zHistory', JSON.stringify(history));
+                    updateHistoryUI();
+                };
                 
-                // 3. Set image src
-                preview.src = data.image_url;
+                img.onerror = () => { throw new Error("Image load failed"); }
 
-                // 4. Handle Success
-                preview.onload = () => {
-                    status.style.display = 'none';
-                    preview.style.display = 'block';
-                    btn.disabled = false;
-                    info.innerText = `Seed: ${data.seed} | Res: ${data.dimensions} | Mode: ${quality}`;
-                };
-
-                // 5. Handle Failure (Timeout or Server Error)
-                preview.onerror = () => {
-                    status.style.display = 'none';
-                    errorBox.style.display = 'block';
-                    errorBox.innerText = "POLLINATIONS SERVER OVERLOADED. CLICK GENERATE AGAIN.";
-                    btn.disabled = false;
-                };
-
-            } catch (err) {
-                status.style.display = 'none';
-                errorBox.style.display = 'block';
-                errorBox.innerText = "ERROR: " + err.message;
+            } catch(e) {
+                loader.style.display = 'none';
+                ph.style.display = 'block';
+                ph.innerHTML = `<p style="color:var(--danger)">Error: ${e.message}</p>`;
                 btn.disabled = false;
+                btn.innerText = "GENERATE";
+                showToast("Generation Failed");
             }
         }
+
+        // --- HISTORY ACTIONS ---
+        function loadFromHistory(idx) {
+            const item = history[idx];
+            document.getElementById('prompt').value = item.prompt;
+            document.getElementById('resultImg').src = item.url;
+            document.getElementById('resultImg').style.display = 'block';
+            document.getElementById('placeholder').style.display = 'none';
+            window.scrollTo({top:0, behavior:'smooth'});
+            showToast("Image Loaded");
+        }
+
+        function clearHistory() {
+            if(confirm("Clear library?")) {
+                history = [];
+                localStorage.removeItem('zHistory');
+                updateHistoryUI();
+            }
+        }
+
+        // Init
+        updateHistoryUI();
+
     </script>
 </body>
 </html>
