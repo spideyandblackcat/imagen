@@ -3,7 +3,7 @@ import requests
 import random
 import urllib.parse
 import os
-import uuid  # <--- Added for Unique IDs
+import uuid
 
 app = Flask(__name__, 
             template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '../templates')))
@@ -61,9 +61,7 @@ def generate():
             seed = random.randint(0, 99999999)
 
         width, height = get_dimensions(ratio, quality)
-        
-        # Generate a Unique ID for this specific image
-        image_id = str(uuid.uuid4())
+        image_id = str(uuid.uuid4()) # Unique ID
 
         params = {
             "model": "flux",
@@ -74,11 +72,10 @@ def generate():
 
         encoded_prompt = urllib.parse.quote(prompt)
         query_string = urllib.parse.urlencode(params)
-        
         image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?{query_string}"
         
         return jsonify({
-            "id": image_id,           # <--- Return UUID
+            "id": image_id,
             "image_url": image_url, 
             "seed": seed, 
             "dimensions": f"{width}x{height}",
