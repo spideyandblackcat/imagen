@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ZImage Mobile V3</title>
+    <title>ZImage Mobile V3.1</title>
     <style>
         :root {
             --bg: #000000;
@@ -22,7 +22,7 @@
             display: flex; flex-direction: column; height: 100vh; overflow: hidden;
         }
 
-        /* --- HEADER --- */
+        /* HEADER */
         header {
             height: 60px; display: flex; align-items: center; justify-content: space-between;
             padding: 0 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(10px);
@@ -32,10 +32,10 @@
         .brand span { color: var(--primary); }
         .settings-btn { font-size: 24px; background: none; border: none; cursor: pointer; }
 
-        /* --- MAIN AREA --- */
+        /* MAIN CONTENT */
         main { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 100px; }
 
-        /* PREVIEW */
+        /* PREVIEW AREA */
         .preview-box {
             width: 100%; min-height: 350px; background: var(--surface);
             border-radius: var(--radius); border: 1px solid #333;
@@ -71,16 +71,18 @@
         }
         .action-btn:disabled { opacity: 0.5; }
 
-        /* HISTORY SCROLL */
+        /* HISTORY */
         .history-label { font-size: 12px; color: var(--text-muted); font-weight: bold; margin-bottom: 10px; }
         .history-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
         .history-item {
             min-width: 80px; width: 80px; height: 80px; background: #222;
             border-radius: 12px; overflow: hidden; border: 1px solid #333; flex-shrink: 0;
+            position: relative;
         }
+        .history-item.active { border-color: var(--primary); border-width: 2px; }
         .history-item img { width: 100%; height: 100%; object-fit: cover; }
 
-        /* --- SETTINGS MODAL (Bottom Sheet) --- */
+        /* MODAL */
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.6); z-index: 100;
@@ -129,16 +131,13 @@
         <button class="action-btn" id="genBtn" onclick="generateImage()">GENERATE</button>
 
         <div class="history-label">RECENT HISTORY</div>
-        <div class="history-strip" id="historyContainer">
-            <!-- Thumbnails go here -->
-        </div>
+        <div class="history-strip" id="historyContainer"></div>
     </main>
 
     <!-- SETTINGS MODAL -->
     <div class="modal-overlay" id="settingsModal" onclick="toggleSettings()">
         <div class="modal-content" onclick="event.stopPropagation()">
             <h3 style="margin-top:0;">Settings</h3>
-            
             <div class="setting-row">
                 <label class="setting-label">Aspect Ratio</label>
                 <select id="ratio">
@@ -147,32 +146,31 @@
                     <option value="9:16">Story/Mobile (9:16)</option>
                     <option value="4:3">Portrait (4:3)</option>
                     <option value="3:2">Landscape Photo (3:2)</option>
-                    <option value="2:3">Portrait Photo (2:3)</option>
                 </select>
             </div>
-
             <div class="setting-row">
                 <label class="setting-label">Quality</label>
                 <select id="quality">
                     <option value="HD">HD (Fast)</option>
                     <option value="4K">4K (Detailed)</option>
                     <option value="8K">8K (Slow)</option>
-                    <option value="16K">16K (Extreme)</option>
                 </select>
             </div>
-
             <div class="setting-row">
                 <label class="setting-label">Negative Prompt</label>
                 <input type="text" id="negative" value="ugly, blurry, low quality">
             </div>
-
-            <button class="close-modal" onclick="toggleSettings()">Done</button>
+            <button class="close-modal" onclick="clearHistory()">Clear History</button>
+            <button class="close-modal" style="background:var(--primary); margin-top:5px;" onclick="toggleSettings()">Done</button>
         </div>
     </div>
 
     <script>
-        // 1. Initialize History from LocalStorage
-        let historyData = JSON.parse(localStorage.getItem('zHistoryV3') || '[]');
+        // Store history in memory variable
+        let historyData = JSON.parse(localStorage.getItem('zHistoryV3_UUID') || '[]');
+        let currentViewingId = null;
+
+        // Init
         renderHistory();
 
         function toggleSettings() {
@@ -200,7 +198,7 @@
             const prompt = document.getElementById('prompt').value;
             if(!prompt) return alert("Please enter a prompt");
 
-            // UI Loading State
+            // UI Loading
             const btn = document.getElementById('genBtn');
             const img = document.getElementById('resultImg');
             const loader = document.getElementById('loader');
@@ -221,25 +219,29 @@
                         negative: document.getElementById('negative').value,
                         ratio: document.getElementById('ratio').value,
                         quality: document.getElementById('quality').value,
-                        seed: -1 // Always random for new generation
+                        seed: -1 
                     })
                 });
 
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
 
-                // Set Image
+                // Load New Image
                 img.src = data.image_url;
                 img.onload = () => {
                     loader.style.display = 'none';
                     img.style.display = 'block';
                     btn.disabled = false;
                     btn.innerText = "GENERATE";
+                    
+                    // --- UNIQUE ID LOGIC ---
+                    // The backend provides a UUID ("id").
+                    // We set this as the current view.
+                    currentViewingId = data.id;
 
-                    // === FIX FOR PROBLEM 2 ===
-                    // We only call this here (when generating new).
-                    // We do NOT call this when loading from history.
+                    // We add it to history.
                     addToHistory({
+                        id: data.id,        // Store UUID
                         url: data.image_url,
                         prompt: prompt
                     });
@@ -248,55 +250,77 @@
             } catch(e) {
                 loader.style.display = 'none';
                 status.style.display = 'block';
-                status.innerText = "Error";
+                status.innerText = "Error: " + e.message;
                 btn.disabled = false;
-                alert(e.message);
             }
         }
 
-        // === HISTORY LOGIC ===
+        // === HISTORY SYSTEM WITH UUID PROTECTION ===
 
-        function addToHistory(item) {
-            // Add new item to start of array
-            historyData.unshift(item);
-            // Limit to 20 items
+        function addToHistory(newItem) {
+            // CRITICAL: Check if this UUID already exists in history.
+            // If it exists, we do NOTHING. This prevents duplicates.
+            const exists = historyData.some(item => item.id === newItem.id);
+            if(exists) return;
+
+            // Add to start
+            historyData.unshift(newItem);
+            
+            // Limit to 20
             if(historyData.length > 20) historyData.pop();
-            // Save
-            localStorage.setItem('zHistoryV3', JSON.stringify(historyData));
-            // Redraw Strip
+            
+            // Save & Render
+            localStorage.setItem('zHistoryV3_UUID', JSON.stringify(historyData));
             renderHistory();
         }
 
         function renderHistory() {
             const container = document.getElementById('historyContainer');
-            container.innerHTML = ''; // Clear current
+            container.innerHTML = ''; 
 
-            historyData.forEach((item, index) => {
+            historyData.forEach((item) => {
                 const div = document.createElement('div');
                 div.className = 'history-item';
+                if(item.id === currentViewingId) div.classList.add('active');
+                
                 div.innerHTML = `<img src="${item.url}" loading="lazy">`;
                 
-                // Clicking this ONLY loads it into view.
-                // It does NOT call generateImage(), so it won't duplicate.
-                div.onclick = () => loadHistoryItem(index);
+                // When clicked, we strictly call Load by ID
+                div.onclick = () => loadFromCache(item.id);
                 
                 container.appendChild(div);
             });
         }
 
-        function loadHistoryItem(index) {
-            const item = historyData[index];
-            
-            // 1. Update Input
+        function loadFromCache(uuid) {
+            // Find the specific object by UUID
+            const item = historyData.find(i => i.id === uuid);
+            if(!item) return;
+
+            // Set State
+            currentViewingId = uuid;
+
+            // Update UI (Load from Cache)
             document.getElementById('prompt').value = item.prompt;
-            
-            // 2. Update Image Display immediately
             const img = document.getElementById('resultImg');
             img.src = item.url;
             img.style.display = 'block';
             document.getElementById('statusText').style.display = 'none';
-            
-            // Note: We intentionally do NOT call addToHistory() here.
+
+            // Highlight active thumb
+            renderHistory(); 
+
+            // IMPORTANT: Notice we do NOT call generateImage() or addToHistory() here.
+            // This ensures no duplication happens.
+        }
+
+        function clearHistory() {
+            if(confirm("Clear all history?")) {
+                historyData = [];
+                localStorage.removeItem('zHistoryV3_UUID');
+                renderHistory();
+                toggleSettings();
+            }
         }
     </script>
 </body>
