@@ -9,27 +9,23 @@ app = Flask(__name__,
             template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '../templates')))
 
 # --- CONFIGURATION ---
-IMAGE_KEYS = [
-    "sk_3vGIyQxT3L2kDkFtnZ7bhyXQL3F1LhIP", "sk_mFqLuaXFMi6AebTNkNUJ5aIRehqLry6N",
-    "sk_6fquwNNLsGpGEcAyqhyXdhFytUEnM41T", "sk_E01cMc0naYu21OCACGdkRgW2XaYjtC8d",
-    "sk_EgfvnDsELJDF2dhYiVV4cwS2Mo2zgtLN", "sk_lsxFXgoDW2x3hUYJt4QHQunij6fAXXfT",
-    "sk_DyiGwCryiSZzW0qOc1IVhBBY1Bfgsaxo"
-]
 GEMINI_KEY = "AIzaSyATb6rGD5ngwFejZsrmDOG-jIIOE7FyJPg"
 
 def get_dimensions(ratio, quality):
+    # Base sizes
     if quality == "16K": base = 8192
     elif quality == "8K": base = 4096
     elif quality == "4K": base = 2048
-    else: base = 1024
+    else: base = 1024 # HD
 
-    if ratio == "16:9": return (int(base * 1.77), base)
-    elif ratio == "9:16": return (base, int(base * 1.77))
-    elif ratio == "4:3": return (int(base * 1.33), base)
-    elif ratio == "3:4": return (base, int(base * 1.33))
+    # Aspect Ratios
+    if ratio == "16:9": return (int(base * 1.777), base)
+    elif ratio == "9:16": return (base, int(base * 1.777))
+    elif ratio == "4:3": return (int(base * 1.333), base)
+    elif ratio == "3:4": return (base, int(base * 1.333))
     elif ratio == "3:2": return (int(base * 1.5), base)
     elif ratio == "2:3": return (base, int(base * 1.5))
-    else: return (base, base)
+    else: return (base, base) # 1:1
 
 @app.route('/')
 def index():
@@ -51,7 +47,16 @@ def enhance():
 def generate():
     try:
         data = request.json
-        prompt = data.get('prompt', '').strip().replace('\n', ' ')
+        raw_prompt = data.get('prompt', '')
+        
+        # --- EXPERT URL HANDLING START ---
+        # 1. Sanitize: Remove newlines, tabs, and collapse multiple spaces into one.
+        clean_prompt = " ".join(raw_prompt.split())
+        
+        # 2. Encode: Turn "A Red Cat" into "A%20Red%20Cat". NO SPACES allowed in URL.
+        encoded_prompt = urllib.parse.quote(clean_prompt)
+        # --- EXPERT URL HANDLING END ---
+
         negative = data.get('negative', '')
         ratio = data.get('ratio', '1:1')
         quality = data.get('quality', 'HD')
@@ -61,17 +66,23 @@ def generate():
             seed = random.randint(0, 99999999)
 
         width, height = get_dimensions(ratio, quality)
-        image_id = str(uuid.uuid4()) # Unique ID
+        image_id = str(uuid.uuid4())
 
         params = {
-            "model": "flux",
-            "width": width, "height": height,
-            "seed": seed, "nologo": "true", "enhance": "true"
+            "model": "zimage",  # <--- STRICTLY ZIMAGE
+            "width": width, 
+            "height": height,
+            "seed": seed, 
+            "nologo": "true", 
+            "enhance": "true"
         }
-        if negative: params["negative"] = negative
+        if negative: 
+            params["negative"] = negative
 
-        encoded_prompt = urllib.parse.quote(prompt)
+        # Construct Query String
         query_string = urllib.parse.urlencode(params)
+        
+        # Final URL (Guaranteed no spaces)
         image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?{query_string}"
         
         return jsonify({
