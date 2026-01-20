@@ -2,34 +2,42 @@
 <html>
 <head>
     <title>ZImage Manager Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
         :root { --bg: #0f0f0f; --panel: #1a1a1a; --accent: #7209b7; --mode4k: #f72585; --mode8k: #00d2d3; --mode16k: #ffd32a; }
-        body { background: var(--bg); color: #eee; font-family: 'Segoe UI', sans-serif; display: flex; margin: 0; height: 100vh; }
-        .sidebar { width: 320px; background: var(--panel); padding: 20px; border-right: 1px solid #333; overflow-y: auto; }
-        .main { flex: 1; padding: 30px; display: flex; flex-direction: column; }
+        body { background: var(--bg); color: #eee; font-family: 'Segoe UI', Tahoma, sans-serif; display: flex; margin: 0; height: 100vh; overflow: hidden; }
         
-        h1 { font-family: Impact; color: var(--accent); margin: 0; font-size: 30px; }
-        .label { font-size: 11px; color: #888; font-weight: bold; margin-top: 15px; display: block; text-transform: uppercase; }
+        .sidebar { width: 320px; background: var(--panel); padding: 20px; border-right: 1px solid #333; overflow-y: auto; display: flex; flex-direction: column; }
+        .main { flex: 1; padding: 20px; display: flex; flex-direction: column; background: #050505; }
         
-        textarea, input, select { width: 100%; background: #262626; border: 1px solid #333; color: white; padding: 10px; border-radius: 5px; margin-top: 5px; box-sizing: border-box; }
+        h1 { font-family: Impact, sans-serif; color: var(--accent); margin: 0; font-size: 28px; letter-spacing: 1px; }
+        .label { font-size: 10px; color: #888; font-weight: bold; margin-top: 15px; display: block; text-transform: uppercase; }
         
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.3s; }
-        .btn-gen { background: var(--accent); color: white; }
+        textarea, input, select { width: 100%; background: #262626; border: 1px solid #333; color: white; padding: 10px; border-radius: 5px; margin-top: 5px; box-sizing: border-box; font-size: 13px; }
+        textarea:focus { outline: 1px solid var(--accent); }
+        
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin-top: 10px; transition: 0.2s; }
+        .btn-gen { background: var(--accent); color: white; font-size: 15px; }
+        .btn-gen:hover { background: #560bad; }
+        .btn-gen:disabled { background: #444; cursor: not-allowed; }
         .btn-gemini { background: #4fabff; color: black; }
+
+        #image-container { flex: 1; margin-top: 15px; border: 1px solid #222; display: flex; align-items: center; justify-content: center; background: #000; position: relative; border-radius: 8px; overflow: hidden; }
+        #preview { max-width: 100%; max-height: 100%; object-fit: contain; display: none; }
+        
+        .status-box { text-align: center; }
+        .loader { color: var(--accent); font-weight: bold; font-size: 14px; margin-bottom: 10px; }
+        .error-text { color: #ff4757; font-size: 13px; margin-top: 10px; display: none; }
         
         .mode-4k { color: var(--mode4k) !important; font-weight: bold; }
         .mode-8k { color: var(--mode8k) !important; font-weight: bold; }
         .mode-16k { color: var(--mode16k) !important; font-weight: bold; }
-
-        #image-container { flex: 1; margin-top: 20px; border: 2px solid #222; display: flex; align-items: center; justify-content: center; background: #050505; position: relative; overflow: hidden; }
-        #preview { max-width: 100%; max-height: 100%; display: none; }
-        .loader { color: var(--accent); font-weight: bold; display: none; }
     </style>
 </head>
 <body>
     <div class="sidebar">
         <h1>ZIMAGE</h1>
-        <div style="font-size: 9px; color: #555;">MANAGER EDITION (VERCEL)</div>
+        <div style="font-size: 9px; color: #666; margin-bottom: 10px;">MANAGER EDITION v2</div>
         
         <span class="label">Resolution Mode</span>
         <select id="quality">
@@ -52,74 +60,114 @@
         <span class="label">Seed (-1 = Random)</span>
         <input type="text" id="seed" value="-1">
 
-        <button class="btn btn-gemini" onclick="enhance()">✨ AI Enhance (Gemini)</button>
+        <button class="btn btn-gemini" id="geminiBtn" onclick="enhance()">✨ AI Enhance (Gemini)</button>
         
         <span class="label">Negative Prompt</span>
-        <textarea id="negative" rows="3">ugly, blurry, low quality, watermark, text</textarea>
+        <textarea id="negative" rows="3">ugly, blurry, low quality, watermark, text, deformed</textarea>
     </div>
 
     <div class="main">
-        <textarea id="prompt" rows="4" placeholder="Enter your prompt..."></textarea>
-        <button class="btn btn-gen" onclick="generate()">✨ GENERATE IMAGE</button>
+        <textarea id="prompt" rows="4" placeholder="Describe the image you want to create..."></textarea>
+        <button class="btn btn-gen" id="genBtn" onclick="generate()">✨ GENERATE IMAGE</button>
         
         <div id="image-container">
-            <div id="status" class="loader">READY</div>
+            <div class="status-box">
+                <div id="status" class="loader">READY</div>
+                <div id="errorBox" class="error-text">Generation failed. Please try again.</div>
+            </div>
             <img id="preview" src="">
         </div>
-        <div id="info" style="font-size: 11px; color: #666; margin-top: 10px;"></div>
+        <div id="info" style="font-size: 11px; color: #555; margin-top: 8px; text-align: center;"></div>
     </div>
 
     <script>
         async function enhance() {
-            const prompt = document.getElementById('prompt').value;
-            if(!prompt) return;
-            document.getElementById('status').style.display = 'block';
-            document.getElementById('status').innerText = "GEMINI IS OPTIMIZING...";
-            const res = await fetch('/enhance', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ prompt })
-            });
-            const data = await res.json();
-            document.getElementById('prompt').value = data.enhanced;
-            document.getElementById('status').style.display = 'none';
+            const promptInput = document.getElementById('prompt');
+            const btn = document.getElementById('geminiBtn');
+            if(!promptInput.value) return alert("Enter a basic prompt first!");
+            
+            btn.disabled = true;
+            btn.innerText = "Thinking...";
+
+            try {
+                const res = await fetch('/enhance', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ prompt: promptInput.value })
+                });
+                const data = await res.json();
+                if(data.enhanced) promptInput.value = data.enhanced;
+            } catch(e) { console.error(e); }
+            
+            btn.disabled = false;
+            btn.innerText = "✨ AI Enhance (Gemini)";
         }
 
         async function generate() {
-            const btn = document.querySelector('.btn-gen');
+            const btn = document.getElementById('genBtn');
             const status = document.getElementById('status');
             const preview = document.getElementById('preview');
             const info = document.getElementById('info');
+            const errorBox = document.getElementById('errorBox');
 
+            const quality = document.getElementById('quality').value;
+            const prompt = document.getElementById('prompt').value;
+            
+            if(!prompt) return alert("Please enter a prompt!");
+
+            // UI Reset
             btn.disabled = true;
-            status.style.display = 'block';
-            status.innerText = "INITIALIZING ZIMAGE ENGINE...";
+            errorBox.style.display = 'none';
             preview.style.display = 'none';
+            status.style.display = 'block';
+            status.innerText = "STARTING ZIMAGE ENGINE...";
+            info.innerText = "";
 
-            const payload = {
-                prompt: document.getElementById('prompt').value,
-                negative: document.getElementById('negative').value,
-                ratio: document.getElementById('ratio').value,
-                quality: document.getElementById('quality').value,
-                seed: document.getElementById('seed').value
-            };
+            try {
+                // 1. Request URL from Backend
+                const res = await fetch('/generate', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        negative: document.getElementById('negative').value,
+                        ratio: document.getElementById('ratio').value,
+                        quality: quality,
+                        seed: document.getElementById('seed').value
+                    })
+                });
+                
+                const data = await res.json();
+                if(data.error) throw new Error(data.error);
 
-            const res = await fetch('/generate', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(payload)
-            });
-            
-            const data = await res.json();
-            status.innerText = `GENERATING ${payload.quality} (${data.dimensions})...`;
-            
-            preview.src = data.image_url;
-            preview.onload = () => {
+                // 2. Display waiting message based on quality
+                status.innerText = `DRAWING ${quality} IMAGE...\n(This usually takes 10-40 seconds)`;
+                
+                // 3. Set image src
+                preview.src = data.image_url;
+
+                // 4. Handle Success
+                preview.onload = () => {
+                    status.style.display = 'none';
+                    preview.style.display = 'block';
+                    btn.disabled = false;
+                    info.innerText = `Seed: ${data.seed} | Res: ${data.dimensions} | Mode: ${quality}`;
+                };
+
+                // 5. Handle Failure (Timeout or Server Error)
+                preview.onerror = () => {
+                    status.style.display = 'none';
+                    errorBox.style.display = 'block';
+                    errorBox.innerText = "POLLINATIONS SERVER OVERLOADED. CLICK GENERATE AGAIN.";
+                    btn.disabled = false;
+                };
+
+            } catch (err) {
                 status.style.display = 'none';
-                preview.style.display = 'block';
+                errorBox.style.display = 'block';
+                errorBox.innerText = "ERROR: " + err.message;
                 btn.disabled = false;
-                info.innerText = `Seed: ${data.seed} | Res: ${data.dimensions} | Mode: ${payload.quality}`;
-            };
+            }
         }
     </script>
 </body>
