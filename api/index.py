@@ -7,10 +7,17 @@ import os
 app = Flask(__name__, 
             template_folder=os.path.abspath(os.path.join(os.path.dirname(__file__), '../templates')))
 
-# CONFIGURATION
+# --- CONFIGURATION ---
+IMAGE_KEYS = [
+    "sk_3vGIyQxT3L2kDkFtnZ7bhyXQL3F1LhIP", "sk_mFqLuaXFMi6AebTNkNUJ5aIRehqLry6N",
+    "sk_6fquwNNLsGpGEcAyqhyXdhFytUEnM41T", "sk_E01cMc0naYu21OCACGdkRgW2XaYjtC8d",
+    "sk_EgfvnDsELJDF2dhYiVV4cwS2Mo2zgtLN", "sk_lsxFXgoDW2x3hUYJt4QHQunij6fAXXfT",
+    "sk_DyiGwCryiSZzW0qOc1IVhBBY1Bfgsaxo"
+]
 GEMINI_KEY = "AIzaSyATb6rGD5ngwFejZsrmDOG-jIIOE7FyJPg"
 
 def get_dimensions(ratio, quality):
+    # Map ratios to pixels based on quality
     if quality == "16K":
         dims = {"1:1": (8192, 8192), "16:9": (15360, 8640), "9:16": (8640, 15360), "4:3": (10240, 7680)}
         return dims.get(ratio, (8192, 8192))
@@ -20,7 +27,7 @@ def get_dimensions(ratio, quality):
     elif quality == "4K":
         dims = {"1:1": (2048, 2048), "16:9": (3840, 2160), "9:16": (2160, 3840)}
         return dims.get(ratio, (2048, 2048))
-    # HD/Standard
+    # HD Defaults
     dims = {"1:1": (1280, 1280), "16:9": (1536, 864), "9:16": (864, 1536), "4:3": (1280, 960)}
     return dims.get(ratio, (1280, 1280))
 
@@ -33,9 +40,11 @@ def enhance():
     try:
         prompt = request.json.get('prompt')
         url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_KEY}"
-        payload = {"contents": [{"parts": [{"text": f"Rewrite for AI image generator, vivid visual description, under 60 words: {prompt}"}]}]}
+        # Instruct Gemini to be concise
+        payload = {"contents": [{"parts": [{"text": f"Rewrite this image prompt to be highly detailed but under 75 words: {prompt}"}]}]}
         res = requests.post(url, json=payload, timeout=8)
-        return jsonify({"enhanced": res.json()['candidates'][0]['content']['parts'][0]['text']})
+        enhanced = res.json()['candidates'][0]['content']['parts'][0]['text']
+        return jsonify({"enhanced": enhanced})
     except:
         return jsonify({"error": "Gemini unavailable"}), 500
 
@@ -54,7 +63,6 @@ def generate():
 
         width, height = get_dimensions(ratio, quality)
         
-        # Build Pollinations URL
         params = {
             "model": "zimage",
             "width": width, "height": height,
@@ -65,7 +73,7 @@ def generate():
         encoded_prompt = urllib.parse.quote(prompt)
         query_string = urllib.parse.urlencode(params)
         
-        # Direct URL return
+        # We return the direct URL. The browser handles the heavy downloading.
         image_url = f"https://image.pollinations.ai/prompt/{encoded_prompt}?{query_string}"
         
         return jsonify({
