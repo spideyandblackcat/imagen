@@ -3,43 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>ZImage HardFix</title>
+    <title>ZImage Final</title>
     <style>
-        :root {
-            --bg: #000000;
-            --surface: #111111;
-            --primary: #8b5cf6;
-            --text-main: #ffffff;
-            --radius: 16px;
-        }
-
+        :root { --bg: #000000; --surface: #111111; --primary: #8b5cf6; --text-main: #ffffff; --radius: 16px; }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body { margin: 0; background: var(--bg); color: var(--text-main); font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
         header { height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; background: rgba(0,0,0,0.8); border-bottom: 1px solid #333; }
         .brand { font-weight: 900; font-size: 20px; } .brand span { color: var(--primary); }
         .settings-btn { font-size: 24px; background: none; border: none; cursor: pointer; }
-
         main { flex: 1; overflow-y: auto; padding: 15px; padding-bottom: 100px; }
-
         .preview-box { width: 100%; min-height: 350px; background: var(--surface); border-radius: var(--radius); border: 1px solid #333; display: flex; align-items: center; justify-content: center; overflow: hidden; margin-bottom: 20px; position: relative; }
         .preview-box img { width: 100%; height: auto; display: none; object-fit: contain; }
         .loader { width: 40px; height: 40px; border: 4px solid #333; border-top-color: var(--primary); border-radius: 50%; animation: spin 1s infinite linear; display: none; }
         @keyframes spin { to { transform: rotate(360deg); } }
-
         .input-group { position: relative; margin-bottom: 15px; }
         textarea { width: 100%; background: var(--surface); border: 1px solid #333; color: white; padding: 15px; padding-bottom: 40px; border-radius: var(--radius); font-size: 16px; resize: none; outline: none; }
         .enhance-btn { position: absolute; bottom: 8px; right: 8px; background: #2a1b42; color: #d8b4fe; border: none; border-radius: 8px; padding: 5px 10px; font-size: 12px; font-weight: bold; }
         .action-btn { width: 100%; background: var(--primary); color: white; border: none; padding: 16px; border-radius: var(--radius); font-size: 16px; font-weight: bold; margin-bottom: 25px; }
         .action-btn:disabled { opacity: 0.5; }
-
-        .history-label { font-size: 12px; color: #888; font-weight: bold; margin-bottom: 10px; }
         .history-strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; }
         .history-item { min-width: 80px; width: 80px; height: 80px; background: #222; border-radius: 12px; overflow: hidden; border: 1px solid #333; flex-shrink: 0; }
         .history-item.active { border: 2px solid var(--primary); }
         .history-item img { width: 100%; height: 100%; object-fit: cover; }
-
-        /* Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 100; opacity: 0; pointer-events: none; transition: 0.3s; display: flex; align-items: flex-end; }
         .modal-overlay.open { opacity: 1; pointer-events: auto; }
         .modal-content { width: 100%; background: #1a1a1a; border-top-left-radius: 24px; border-top-right-radius: 24px; padding: 25px; transform: translateY(100%); transition: transform 0.3s ease-out; border-top: 1px solid #333; }
@@ -52,7 +37,7 @@
 </head>
 <body>
     <header>
-        <div class="brand">ZImage <span>V3.3</span></div>
+        <div class="brand">ZImage <span>Z</span></div>
         <button class="settings-btn" onclick="toggleSettings()">⚙️</button>
     </header>
 
@@ -66,7 +51,7 @@
             <button class="enhance-btn" onclick="enhancePrompt()">✨ Enhance</button>
         </div>
         <button class="action-btn" id="genBtn" onclick="generateImage()">GENERATE</button>
-        <div class="history-label">RECENT HISTORY</div>
+        <div style="font-size:12px; color:#888; font-weight:bold; margin-bottom:10px;">RECENT HISTORY</div>
         <div class="history-strip" id="historyContainer"></div>
     </main>
 
@@ -98,24 +83,16 @@
     </div>
 
     <script>
-        // --- DATA LAYER ---
-        let historyData = JSON.parse(localStorage.getItem('zHistoryV3_HardFix') || '[]');
+        let historyData = JSON.parse(localStorage.getItem('zHistoryV3_Final') || '[]');
         let currentViewingId = null;
-
-        // Startup
         renderHistory();
-
-        // --- CORE FUNCTIONS ---
 
         async function generateImage() {
             const promptVal = document.getElementById('prompt').value;
             if(!promptVal) return alert("Enter prompt");
-
-            // UI State: Loading
             toggleLoading(true);
 
             try {
-                // 1. CALL API
                 const res = await fetch('/generate', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
@@ -130,18 +107,11 @@
                 const data = await res.json();
                 if(data.error) throw new Error(data.error);
 
-                // 2. HARD FIX: Save to History HERE.
-                // This only runs when the API call succeeds.
-                // It NEVER runs when clicking a history thumb.
-                addToHistory({
-                    id: data.id,
-                    url: data.image_url,
-                    prompt: promptVal
-                });
-
-                // 3. Update View
+                // Add to history ONLY on successful API generation
+                addToHistory({ id: data.id, url: data.image_url, prompt: promptVal });
+                
                 currentViewingId = data.id;
-                renderHistory(); // Update active border
+                renderHistory();
                 displayImage(data.image_url);
 
             } catch(e) {
@@ -151,42 +121,26 @@
         }
 
         function loadFromCache(uuid) {
-            // 1. Find Data
             const item = historyData.find(i => i.id === uuid);
             if(!item) return;
-
-            // 2. Set UI State
             currentViewingId = uuid;
             document.getElementById('prompt').value = item.prompt;
-            renderHistory(); // Update active border
-
-            // 3. Show Image
+            renderHistory();
             toggleLoading(true);
             displayImage(item.url);
-            
-            // NOTE: addToHistory is NOT called here. Duplicate impossible.
         }
 
         function displayImage(url) {
             const img = document.getElementById('resultImg');
-            
-            // Reset onload to purely visual logic
-            img.onload = () => {
-                toggleLoading(false);
-            };
-            
+            img.onload = () => toggleLoading(false);
             img.src = url;
         }
 
-        // --- HELPER FUNCTIONS ---
-
         function addToHistory(item) {
-            // Redundant check just in case, but logic above prevents it anyway
             if(historyData.some(i => i.id === item.id)) return;
-
             historyData.unshift(item);
             if(historyData.length > 20) historyData.pop();
-            localStorage.setItem('zHistoryV3_HardFix', JSON.stringify(historyData));
+            localStorage.setItem('zHistoryV3_Final', JSON.stringify(historyData));
         }
 
         function renderHistory() {
@@ -205,17 +159,12 @@
             const btn = document.getElementById('genBtn');
             const loader = document.getElementById('loader');
             const img = document.getElementById('resultImg');
-            
             if(isLoading) {
-                btn.disabled = true;
-                btn.innerText = "GENERATING...";
-                loader.style.display = 'block';
-                img.style.display = 'none';
+                btn.disabled = true; btn.innerText = "GENERATING...";
+                loader.style.display = 'block'; img.style.display = 'none';
             } else {
-                btn.disabled = false;
-                btn.innerText = "GENERATE";
-                loader.style.display = 'none';
-                img.style.display = 'block';
+                btn.disabled = false; btn.innerText = "GENERATE";
+                loader.style.display = 'none'; img.style.display = 'block';
             }
         }
 
@@ -233,10 +182,7 @@
 
         function toggleSettings() { document.getElementById('settingsModal').classList.toggle('open'); }
         function clearHistory() { 
-            if(confirm("Clear?")) { 
-                historyData=[]; localStorage.removeItem('zHistoryV3_HardFix'); 
-                renderHistory(); toggleSettings(); 
-            } 
+            if(confirm("Clear?")) { historyData=[]; localStorage.removeItem('zHistoryV3_Final'); renderHistory(); toggleSettings(); } 
         }
     </script>
 </body>
